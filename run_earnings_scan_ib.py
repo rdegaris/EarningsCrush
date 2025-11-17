@@ -1,0 +1,485 @@
+"""
+Earnings Crush Scanner using Interactive Brokers - Daily Runner
+
+Scans stocks with upcoming earnings and generates recommendations
+for earnings crush trades based on volatility analysis using IB data.
+
+Usage:
+    python run_earnings_scan_ib.py
+"""
+
+import json
+import sys
+from datetime import datetime, date, timedelta
+from pathlib import Path
+import requests
+import os
+
+try:
+    from ib_insync import IB, Stock, Option, util
+    IB_AVAILABLE = True
+except ImportError:
+    IB_AVAILABLE = False
+    print("ERROR: ib_insync not installed")
+    print("Install with: pip install ib_insync")
+    sys.exit(1)
+
+
+def get_upcoming_earnings(tickers, days_ahead=30):
+    """
+    Get tickers with earnings in the next N days using Finnhub API.
+    
+    Args:
+        tickers: List of ticker symbols
+        days_ahead: Number of days to look ahead for earnings
+    
+    Returns:
+        List of (ticker, earnings_date, days_until) tuples
+    """
+    upcoming = []
+    today = date.today()
+    
+    # Use Finnhub API key
+    api_key = os.environ.get('FINNHUB_API_KEY', 'd3rcvl1r01qopgh82hs0d3rcvl1r01qopgh82hsg')
+    
+    # Get earnings calendar for next N days
+    from_date = today.strftime('%Y-%m-%d')
+    to_date = (today + timedelta(days=days_ahead)).strftime('%Y-%m-%d')
+    
+    for ticker in tickers:
+        try:
+            url = f"https://finnhub.io/api/v1/calendar/earnings?from={from_date}&to={to_date}&symbol={ticker}&token={api_key}"
+            response = requests.get(url, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Check if we have earnings data
+                if data and 'earningsCalendar' in data and len(data['earningsCalendar']) > 0:
+                    # Get the first (nearest) earnings date
+                    earnings_entry = data['earningsCalendar'][0]
+                    date_str = earnings_entry.get('date')
+                    
+                    if date_str:
+                        earnings_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                        days_until = (earnings_date - today).days
+                        
+                        # Only include if within our timeframe and in the future
+                        if 0 <= days_until <= days_ahead:
+                            upcoming.append((ticker, date_str, days_until))
+                            print(f"  [INFO] {ticker}: Earnings in {days_until} days ({date_str})")
+        except Exception as e:
+            print(f"  [WARNING] Could not get earnings for {ticker}: {e}")
+            continue
+    
+    # Sort by days until earnings
+    upcoming.sort(key=lambda x: x[2])
+    return upcoming
+
+
+def get_atm_strike(price):
+    """Round to nearest liquid strike."""
+    if price < 50:
+        return round(price / 2.5) * 2.5
+    elif price < 100:
+        return round(price / 5) * 5
+    elif price < 200:
+        return round(price / 5) * 5
+    else:
+        return round(price / 10) * 10
+
+
+def get_option_chain_ib(ib, ticker, strike, days_target_min, days_target_max):
+    """
+    Get option chain from IB for a specific strike and DTE range.
+    
+    Returns:
+        List of (expiration, dte, call_contract) tuples
+    """
+    try:
+        stock = Stock(ticker, 'SMART', 'USD')
+        ib.qualifyContracts(stock)
+        
+        # Get all expirations
+        chains = ib.reqSecDefOptParams(stock.symbol, '', stock.secType, stock.conId)
+        
+        if not chains:
+            print(f"    [WARNING] No option chains found for {ticker}")
+            return []
+        
+        # Get expirations from first chain (usually the main exchange)
+        chain = chains[0]
+        expirations = sorted(chain.expirations)
+        
+        print(f"    Found {len(expirations)} expirations")
+        
+        today = date.today()
+        matching_exps = []
+        
+        for exp_str in expirations:
+            exp_date = datetime.strptime(exp_str, '%Y%m%d').date()
+            dte = (exp_date - today).days
+            
+            if days_target_min <= dte <= days_target_max:
+                # Create call option contract
+                call = Option(ticker, exp_str, strike, 'C', 'SMART')
+                matching_exps.append((exp_str, dte, call))
+                print(f"      Match: {exp_str} (DTE: {dte})")
+        
+        return matching_exps
+        
+    except Exception as e:
+        print(f"    [WARNING] Error getting option chain for {ticker}: {e}")
+        return []
+
+
+def get_option_price_and_iv(ib, option_contract):
+    """
+    Get market price and IV for an option from IB.
+    
+    Returns:
+        Tuple of (mid_price, implied_vol) or (None, None) if unavailable
+    """
+    try:
+        # Qualify the contract first
+        contracts = ib.qualifyContracts(option_contract)
+        if not contracts:
+            print(f"      Could not qualify contract")
+            return None, None
+        
+        qualified_contract = contracts[0]
+        
+        # Request market data with greeks (221 for IV)
+        ib.reqMktData(qualified_contract, '106', False, False)
+        
+        # Wait for data to populate
+        for i in range(10):  # Try up to 5 seconds
+            ib.sleep(0.5)
+            ticker = ib.ticker(qualified_contract)
+            
+            # Check if we have price data
+            if ticker and (ticker.bid or ticker.ask or ticker.last):
+                break
+        
+        ticker = ib.ticker(qualified_contract)
+        
+        if not ticker:
+            print(f"      No ticker data received")
+            ib.cancelMktData(qualified_contract)
+            return None, None
+        
+        # Get mid price
+        bid = ticker.bid if ticker.bid and ticker.bid > 0 else None
+        ask = ticker.ask if ticker.ask and ticker.ask > 0 else None
+        last = ticker.last if ticker.last and ticker.last > 0 else None
+        
+        if bid and ask:
+            mid = (bid + ask) / 2.0
+        elif last:
+            mid = last
+        elif bid:
+            mid = bid
+        elif ask:
+            mid = ask
+        else:
+            mid = None
+        
+        # Get IV from model greeks or bid/ask IV
+        iv = None
+        if ticker.modelGreeks and ticker.modelGreeks.impliedVol:
+            iv = ticker.modelGreeks.impliedVol
+        elif ticker.bidGreeks and ticker.bidGreeks.impliedVol:
+            iv = ticker.bidGreeks.impliedVol
+        elif ticker.askGreeks and ticker.askGreeks.impliedVol:
+            iv = ticker.askGreeks.impliedVol
+        elif ticker.lastGreeks and ticker.lastGreeks.impliedVol:
+            iv = ticker.lastGreeks.impliedVol
+        
+        # Cancel market data
+        ib.cancelMktData(qualified_contract)
+        
+        return mid, iv
+        
+    except Exception as e:
+        print(f"      Error getting option data: {e}")
+        return None, None
+
+
+def run_earnings_scan_ib(ib, tickers, days_ahead=30):
+    """
+    Scan stocks with upcoming earnings and generate recommendations using IB data.
+    
+    Args:
+        ib: Connected IB instance
+        tickers: List of ticker symbols to scan
+        days_ahead: Number of days to look ahead for earnings
+    
+    Returns:
+        Dict with scan results
+    """
+    print("=" * 80)
+    print("EARNINGS CRUSH SCANNER (IB)")
+    print("=" * 80)
+    print()
+    
+    print(f"Scanning {len(tickers)} tickers for earnings in next {days_ahead} days...")
+    print()
+    
+    # Get stocks with upcoming earnings
+    upcoming_earnings = get_upcoming_earnings(tickers, days_ahead)
+    
+    if not upcoming_earnings:
+        print("[INFO] No upcoming earnings found in the specified timeframe")
+        return {
+            'timestamp': datetime.now().isoformat(),
+            'date': datetime.now().strftime('%Y-%m-%d'),
+            'total_scanned': len(tickers),
+            'earnings_found': 0,
+            'opportunities': [],
+            'summary': {
+                'total_recommended': 0,
+                'total_consider': 0,
+                'total_avoid': 0,
+                'avg_iv': 0,
+                'avg_expected_move': 0
+            }
+        }
+    
+    print(f"\nFound {len(upcoming_earnings)} stocks with upcoming earnings")
+    print("\nAnalyzing options data from IB...")
+    print()
+    
+    opportunities = []
+    recommended_count = 0
+    consider_count = 0
+    avoid_count = 0
+    
+    for ticker, earnings_date, days_until in upcoming_earnings:
+        try:
+            print(f"[SCAN] {ticker} (Earnings: {earnings_date}, {days_until} days)")
+            
+            # Get stock price from IB
+            stock = Stock(ticker, 'SMART', 'USD')
+            ib.qualifyContracts(stock)
+            ib.reqMktData(stock, '', False, False)
+            ib.sleep(1)
+            
+            stock_ticker = ib.reqTickers(stock)[0]
+            if stock_ticker.marketPrice() and stock_ticker.marketPrice() > 0:
+                price = stock_ticker.marketPrice()
+            else:
+                print(f"  [SKIP] Could not get price for {ticker}")
+                ib.cancelMktData(stock)
+                continue
+            
+            ib.cancelMktData(stock)
+            
+            # Get ATM strike
+            atm_strike = get_atm_strike(price)
+            
+            # Get front month options (near earnings)
+            front_options = get_option_chain_ib(ib, ticker, atm_strike, 
+                                               max(1, days_until - 3), 
+                                               days_until + 7)
+            
+            # Get back month options (30 days out)
+            back_options = get_option_chain_ib(ib, ticker, atm_strike, 25, 45)
+            
+            if not front_options or not back_options:
+                print(f"  [SKIP] Insufficient option chain data")
+                continue
+            
+            # Use first matching expiration for each
+            front_exp, front_dte, front_call = front_options[0]
+            back_exp, back_dte, back_call = back_options[0]
+            
+            # Get option prices and IVs
+            print(f"    Getting front month option data...")
+            front_price, front_iv = get_option_price_and_iv(ib, front_call)
+            
+            print(f"    Getting back month option data...")
+            back_price, back_iv = get_option_price_and_iv(ib, back_call)
+            
+            if not front_price or not back_price:
+                print(f"  [SKIP] Could not get option prices (Front: {front_price}, Back: {back_price})")
+                continue
+            
+            if not front_iv or not back_iv:
+                print(f"  [WARNING] Missing IV data (Front IV: {front_iv}, Back IV: {back_iv})")
+                # Use a default IV estimate based on option price if IV not available
+                if not front_iv:
+                    front_iv = 0.5  # Default to 50%
+                if not back_iv:
+                    back_iv = 0.4  # Default to 40%
+            
+            # Calculate metrics
+            atm_iv = front_iv * 100  # Convert to percentage
+            
+            # Estimate expected move based on straddle
+            straddle_price = front_price * 2  # Approximate (call price * 2 for ATM)
+            expected_move_pct = (straddle_price / price) * 100
+            expected_move_dollars = straddle_price
+            
+            # Simple recommendation logic
+            # RECOMMENDED: High IV (>60%), front month close to earnings
+            # CONSIDER: Moderate IV (>50%)
+            # AVOID: Low IV or poor timing
+            
+            if atm_iv > 60 and days_until <= 5:
+                recommendation = "RECOMMENDED"
+                recommended_count += 1
+            elif atm_iv > 50 and days_until <= 7:
+                recommendation = "CONSIDER"
+                consider_count += 1
+            else:
+                recommendation = "AVOID"
+                avoid_count += 1
+            
+            # Create suggested trade
+            suggested_trade = {
+                'strike': float(atm_strike),
+                'sell_expiration': datetime.strptime(front_exp, '%Y%m%d').strftime('%Y-%m-%d'),
+                'buy_expiration': datetime.strptime(back_exp, '%Y%m%d').strftime('%Y-%m-%d'),
+                'sell_dte': front_dte,
+                'buy_dte': back_dte,
+                'sell_price': round(front_price, 2),
+                'buy_price': round(back_price, 2),
+                'net_credit': round(front_price - back_price, 2)
+            }
+            
+            opportunity = {
+                'ticker': ticker,
+                'price': round(price, 2),
+                'earnings_date': earnings_date,
+                'days_to_earnings': days_until,
+                'iv': round(atm_iv, 1),
+                'expected_move': round(expected_move_dollars, 2),
+                'expected_move_pct': round(expected_move_pct, 1),
+                'recommendation': recommendation,
+                'criteria': {
+                    'avg_volume': True,  # Assume liquid stocks
+                    'iv30_rv30': atm_iv > 50,
+                    'ts_slope_0_45': front_iv > back_iv  # Front higher than back
+                },
+                'suggested_trade': suggested_trade
+            }
+            
+            opportunities.append(opportunity)
+            
+            print(f"  [{recommendation}] Price: ${price:.2f}, IV: {atm_iv:.1f}%, Expected Move: ±{expected_move_pct:.1f}%")
+            print(f"    Trade: Sell {suggested_trade['sell_expiration']} / Buy {suggested_trade['buy_expiration']} ${atm_strike} CALL")
+            print(f"    Net Credit: ${suggested_trade['net_credit']:.2f} (Sell ${suggested_trade['sell_price']:.2f} - Buy ${suggested_trade['buy_price']:.2f})")
+            
+        except Exception as e:
+            import traceback
+            print(f"  [ERROR] Failed to analyze {ticker}: {e}")
+            print(f"    {traceback.format_exc()}")
+            continue
+    
+    # Calculate summary statistics
+    if opportunities:
+        avg_iv = sum(opp['iv'] for opp in opportunities) / len(opportunities)
+        avg_expected_move = sum(opp['expected_move_pct'] for opp in opportunities) / len(opportunities)
+    else:
+        avg_iv = 0
+        avg_expected_move = 0
+    
+    print()
+    print("=" * 80)
+    print("SCAN COMPLETE")
+    print("=" * 80)
+    print(f"Total analyzed: {len(opportunities)}")
+    print(f"Recommended: {recommended_count}")
+    print(f"Consider: {consider_count}")
+    print(f"Avoid: {avoid_count}")
+    print()
+    
+    return {
+        'timestamp': datetime.now().isoformat(),
+        'date': datetime.now().strftime('%Y-%m-%d'),
+        'total_scanned': len(tickers),
+        'earnings_found': len(upcoming_earnings),
+        'opportunities': opportunities,
+        'summary': {
+            'total_recommended': recommended_count,
+            'total_consider': consider_count,
+            'total_avoid': avoid_count,
+            'avg_iv': round(avg_iv, 1),
+            'avg_expected_move': round(avg_expected_move, 1)
+        }
+    }
+
+
+def get_scan_universe():
+    """Get list of tickers to scan for earnings."""
+    from_mag7 = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA']
+    
+    from_nasdaq100 = [
+        'ADBE', 'AMD', 'ABNB', 'AVGO', 'BKNG', 'CMCSA', 'COST', 'CSCO', 
+        'CRWD', 'DDOG', 'DIS', 'EA', 'GILD', 'INTC', 'INTU', 'ISRG',
+        'KLAC', 'LRCX', 'MELI', 'MRNA', 'NFLX', 'NOW', 'PANW', 'PYPL',
+        'QCOM', 'SBUX', 'SHOP', 'SNOW', 'TEAM', 'TTWO', 'UBER', 'WDAY', 'ZS'
+    ]
+    
+    # Combine and deduplicate
+    all_tickers = list(set(from_mag7 + from_nasdaq100))
+    all_tickers.sort()
+    
+    return all_tickers
+
+
+if __name__ == "__main__":
+    if not IB_AVAILABLE:
+        print("ERROR: ib_insync library not available")
+        sys.exit(1)
+    
+    # Connect to IB
+    ib = IB()
+    try:
+        print("Connecting to Interactive Brokers...")
+        print("Make sure IB Gateway or TWS is running with API enabled")
+        print()
+        
+        # Try common ports
+        connected = False
+        for port in [7497, 4002, 7496, 4001]:
+            try:
+                ib.connect('127.0.0.1', port, clientId=999)
+                connected = True
+                print(f"✓ Connected on port {port}")
+                break
+            except:
+                continue
+        
+        if not connected:
+            print("ERROR: Could not connect to IB Gateway/TWS")
+            print("Make sure:")
+            print("  1. IB Gateway or TWS is running")
+            print("  2. API connections are enabled")
+            print("  3. Socket port is correct (7497 for TWS paper, 4002 for Gateway paper)")
+            sys.exit(1)
+        
+        print()
+        
+        # Run scan
+        tickers = get_scan_universe()
+        results = run_earnings_scan_ib(ib, tickers, days_ahead=30)
+        
+        if results:
+            # Save to JSON
+            output_file = 'earnings_crush_latest.json'
+            with open(output_file, 'w') as f:
+                json.dump(results, f, indent=2)
+            print(f"[OK] Results saved to {output_file}")
+            
+            # Also save to web repo if it exists
+            web_public = Path(__file__).parent.parent.parent / 'forward-volatility-web' / 'public'
+            if web_public.exists():
+                web_file = web_public / output_file
+                with open(web_file, 'w') as f:
+                    json.dump(results, f, indent=2)
+                print(f"[OK] Results copied to {web_file}")
+        
+    finally:
+        ib.disconnect()
+        print("\nDisconnected from IB")
