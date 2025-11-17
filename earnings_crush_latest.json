@@ -1,0 +1,165 @@
+{
+  "timestamp": "2025-11-17T15:09:09.773062",
+  "date": "2025-11-17",
+  "total_scanned": 40,
+  "earnings_found": 10,
+  "opportunities": [
+    {
+      "ticker": "NVDA",
+      "price": 186.6,
+      "earnings_date": "2025-11-19",
+      "days_to_earnings": 2,
+      "iv": 78.3,
+      "expected_move": 13.7,
+      "expected_move_pct": 7.3,
+      "recommendation": "CONSIDER",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": false,
+        "ts_slope_0_45": true
+      }
+    },
+    {
+      "ticker": "PANW",
+      "price": 202.9,
+      "earnings_date": "2025-11-19",
+      "days_to_earnings": 2,
+      "iv": 81.5,
+      "expected_move": 15.42,
+      "expected_move_pct": 7.6,
+      "recommendation": "RECOMMENDED",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": true,
+        "ts_slope_0_45": true
+      }
+    },
+    {
+      "ticker": "INTU",
+      "price": 645.98,
+      "earnings_date": "2025-11-20",
+      "days_to_earnings": 3,
+      "iv": 70.1,
+      "expected_move": 42.25,
+      "expected_move_pct": 6.5,
+      "recommendation": "RECOMMENDED",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": true,
+        "ts_slope_0_45": true
+      }
+    },
+    {
+      "ticker": "WDAY",
+      "price": 224.95,
+      "earnings_date": "2025-11-25",
+      "days_to_earnings": 8,
+      "iv": 42.8,
+      "expected_move": 7.49,
+      "expected_move_pct": 3.3,
+      "recommendation": "AVOID",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": true,
+        "ts_slope_0_45": false
+      }
+    },
+    {
+      "ticker": "ZS",
+      "price": 294.92,
+      "earnings_date": "2025-11-25",
+      "days_to_earnings": 8,
+      "iv": 50.7,
+      "expected_move": 13.6,
+      "expected_move_pct": 4.6,
+      "recommendation": "AVOID",
+      "criteria": {
+        "avg_volume": false,
+        "iv30_rv30": true,
+        "ts_slope_0_45": false
+      }
+    },
+    {
+      "ticker": "CRWD",
+      "price": 529.78,
+      "earnings_date": "2025-12-02",
+      "days_to_earnings": 15,
+      "iv": 47.4,
+      "expected_move": 22.57,
+      "expected_move_pct": 4.3,
+      "recommendation": "AVOID",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": true,
+        "ts_slope_0_45": false
+      }
+    },
+    {
+      "ticker": "SNOW",
+      "price": 252.79,
+      "earnings_date": "2025-12-03",
+      "days_to_earnings": 16,
+      "iv": 50.0,
+      "expected_move": 11.32,
+      "expected_move_pct": 4.5,
+      "recommendation": "AVOID",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": true,
+        "ts_slope_0_45": false
+      }
+    },
+    {
+      "ticker": "ADBE",
+      "price": 325.07,
+      "earnings_date": "2025-12-11",
+      "days_to_earnings": 24,
+      "iv": 37.1,
+      "expected_move": 10.76,
+      "expected_move_pct": 3.3,
+      "recommendation": "AVOID",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": true,
+        "ts_slope_0_45": false
+      }
+    },
+    {
+      "ticker": "AVGO",
+      "price": 342.65,
+      "earnings_date": "2025-12-11",
+      "days_to_earnings": 24,
+      "iv": 53.5,
+      "expected_move": 17.1,
+      "expected_move_pct": 5.0,
+      "recommendation": "AVOID",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": false,
+        "ts_slope_0_45": false
+      }
+    },
+    {
+      "ticker": "COST",
+      "price": 912.59,
+      "earnings_date": "2025-12-11",
+      "days_to_earnings": 24,
+      "iv": 25.4,
+      "expected_move": 20.53,
+      "expected_move_pct": 2.2,
+      "recommendation": "AVOID",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": true,
+        "ts_slope_0_45": false
+      }
+    }
+  ],
+  "summary": {
+    "total_recommended": 2,
+    "total_consider": 1,
+    "total_avoid": 7,
+    "avg_iv": 53.7,
+    "avg_expected_move": 4.9
+  }
+}

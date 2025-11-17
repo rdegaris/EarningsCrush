@@ -10,15 +10,17 @@ Usage:
 
 import json
 import sys
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
 import yfinance as yf
+import requests
+import os
 from calculator import compute_recommendation, get_current_price, filter_dates
 
 
 def get_upcoming_earnings(tickers, days_ahead=30):
     """
-    Get tickers with earnings in the next N days.
+    Get tickers with earnings in the next N days using Finnhub API.
     
     Args:
         tickers: List of ticker symbols
@@ -30,36 +32,35 @@ def get_upcoming_earnings(tickers, days_ahead=30):
     upcoming = []
     today = date.today()
     
+    # Use Finnhub API key
+    api_key = os.environ.get('FINNHUB_API_KEY', 'd3rcvl1r01qopgh82hs0d3rcvl1r01qopgh82hsg')
+    
+    # Get earnings calendar for next N days
+    from_date = today.strftime('%Y-%m-%d')
+    to_date = (today + timedelta(days=days_ahead)).strftime('%Y-%m-%d')
+    
     for ticker in tickers:
         try:
-            stock = yf.Ticker(ticker)
+            url = f"https://finnhub.io/api/v1/calendar/earnings?from={from_date}&to={to_date}&symbol={ticker}&token={api_key}"
+            response = requests.get(url, timeout=10)
             
-            # Get earnings date from calendar
-            calendar = stock.calendar
-            if calendar is not None and not calendar.empty:
-                if 'Earnings Date' in calendar.index:
-                    earnings_dates = calendar.loc['Earnings Date']
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Check if we have earnings data
+                if data and 'earningsCalendar' in data and len(data['earningsCalendar']) > 0:
+                    # Get the first (nearest) earnings date
+                    earnings_entry = data['earningsCalendar'][0]
+                    date_str = earnings_entry.get('date')
                     
-                    # Handle single date or date range
-                    if hasattr(earnings_dates, '__iter__') and not isinstance(earnings_dates, str):
-                        # Take first date if range
-                        earnings_date = earnings_dates[0] if len(earnings_dates) > 0 else None
-                    else:
-                        earnings_date = earnings_dates
-                    
-                    if earnings_date:
-                        # Convert to date object
-                        if hasattr(earnings_date, 'date'):
-                            earnings_date = earnings_date.date()
-                        elif isinstance(earnings_date, str):
-                            earnings_date = datetime.strptime(earnings_date, '%Y-%m-%d').date()
-                        
+                    if date_str:
+                        earnings_date = datetime.strptime(date_str, '%Y-%m-%d').date()
                         days_until = (earnings_date - today).days
                         
                         # Only include if within our timeframe and in the future
                         if 0 <= days_until <= days_ahead:
-                            upcoming.append((ticker, earnings_date.strftime('%Y-%m-%d'), days_until))
-                            print(f"  [INFO] {ticker}: Earnings in {days_until} days ({earnings_date})")
+                            upcoming.append((ticker, date_str, days_until))
+                            print(f"  [INFO] {ticker}: Earnings in {days_until} days ({date_str})")
         except Exception as e:
             print(f"  [WARNING] Could not get earnings for {ticker}: {e}")
             continue
@@ -134,10 +135,10 @@ def run_earnings_scan(tickers, days_ahead=30):
             price = get_current_price(stock)
             
             # Extract recommendation details
-            avg_volume_pass = result['avg_volume']
-            iv30_rv30_pass = result['iv30_rv30']
-            ts_slope_pass = result['ts_slope_0_45']
-            expected_move_str = result['expected_move']
+            avg_volume_pass = result.get('avg_volume', False)
+            iv30_rv30_pass = result.get('iv30_rv30', False)
+            ts_slope_pass = result.get('ts_slope_0_45', False)
+            expected_move_str = result.get('expected_move', '0%')
             
             # Parse expected move percentage
             expected_move_pct = 0
@@ -195,9 +196,9 @@ def run_earnings_scan(tickers, days_ahead=30):
                 'expected_move_pct': round(expected_move_pct, 1),
                 'recommendation': recommendation,
                 'criteria': {
-                    'avg_volume': avg_volume_pass,
-                    'iv30_rv30': iv30_rv30_pass,
-                    'ts_slope_0_45': ts_slope_pass
+                    'avg_volume': bool(avg_volume_pass),
+                    'iv30_rv30': bool(iv30_rv30_pass),
+                    'ts_slope_0_45': bool(ts_slope_pass)
                 }
             }
             
@@ -207,7 +208,9 @@ def run_earnings_scan(tickers, days_ahead=30):
             print(f"    Criteria: Vol={avg_volume_pass}, IV/RV={iv30_rv30_pass}, Slope={ts_slope_pass}")
             
         except Exception as e:
+            import traceback
             print(f"  [ERROR] Failed to analyze {ticker}: {e}")
+            print(f"    {traceback.format_exc()}")
             continue
     
     # Calculate summary statistics
