@@ -186,6 +186,46 @@ def run_earnings_scan(tickers, days_ahead=30):
             except:
                 atm_iv = 0
             
+            # Generate suggested trade for RECOMMENDED opportunities
+            suggested_trade = None
+            if recommendation == "RECOMMENDED":
+                try:
+                    # Get ATM strike (round to nearest $5 for liquid strikes)
+                    atm_strike = round(price / 5) * 5
+                    
+                    # Get option expirations
+                    exp_dates = filter_dates(list(stock.options))
+                    if len(exp_dates) >= 2:
+                        # Front month: nearest expiration (should be close to earnings)
+                        sell_exp = exp_dates[0]
+                        sell_dte = (datetime.strptime(sell_exp, '%Y-%m-%d').date() - date.today()).days
+                        
+                        # Back month: Find expiration ~30 days out
+                        buy_exp = None
+                        buy_dte = 0
+                        for exp in exp_dates:
+                            dte = (datetime.strptime(exp, '%Y-%m-%d').date() - date.today()).days
+                            if dte >= 25 and dte <= 45:  # Look for 30 +/- 15 days
+                                buy_exp = exp
+                                buy_dte = dte
+                                break
+                        
+                        # If no perfect match, use second expiration
+                        if not buy_exp and len(exp_dates) >= 2:
+                            buy_exp = exp_dates[1]
+                            buy_dte = (datetime.strptime(buy_exp, '%Y-%m-%d').date() - date.today()).days
+                        
+                        if buy_exp:
+                            suggested_trade = {
+                                'strike': atm_strike,
+                                'sell_expiration': sell_exp,
+                                'buy_expiration': buy_exp,
+                                'sell_dte': sell_dte,
+                                'buy_dte': buy_dte
+                            }
+                except Exception as e:
+                    print(f"    [WARNING] Could not generate suggested trade: {e}")
+            
             opportunity = {
                 'ticker': ticker,
                 'price': round(price, 2),
@@ -202,10 +242,16 @@ def run_earnings_scan(tickers, days_ahead=30):
                 }
             }
             
+            # Add suggested trade if available
+            if suggested_trade:
+                opportunity['suggested_trade'] = suggested_trade
+            
             opportunities.append(opportunity)
             
             print(f"  [{recommendation}] Price: ${price:.2f}, IV: {atm_iv:.1f}%, Expected Move: ±{expected_move_pct:.1f}%")
             print(f"    Criteria: Vol={avg_volume_pass}, IV/RV={iv30_rv30_pass}, Slope={ts_slope_pass}")
+            if suggested_trade:
+                print(f"    Trade: Sell {sell_exp} / Buy {buy_exp} ${atm_strike} CALL")
             
         except Exception as e:
             import traceback
