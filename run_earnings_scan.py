@@ -1,18 +1,21 @@
 """
-Earnings Crush Scanner - Daily Runner
+Earnings Crush Scanner - Daily Runner (DEPRECATED)
+
+⚠️ DEPRECATED: This scanner uses yfinance which has severe rate limiting issues.
+Use run_earnings_scan_ib.py instead for production scanning with Interactive Brokers.
 
 Scans stocks with upcoming earnings and generates recommendations
 for earnings crush trades based on volatility analysis.
 
 Usage:
-    python run_earnings_scan.py
+    python run_earnings_scan.py  (NOT RECOMMENDED - use run_earnings_scan_ib.py)
 """
 
 import json
 import sys
 from datetime import datetime, date, timedelta
 from pathlib import Path
-import yfinance as yf
+# import yfinance as yf  # REMOVED - use IB scanner instead
 import requests
 import os
 from calculator import compute_recommendation, get_current_price, filter_dates
@@ -122,17 +125,10 @@ def run_earnings_scan(tickers, days_ahead=30):
         try:
             print(f"[SCAN] {ticker} (Earnings: {earnings_date}, {days_until} days)")
             
-            # Get recommendation
-            result = compute_recommendation(ticker)
-            
-            if isinstance(result, str):
-                # Error message
-                print(f"  [SKIP] {result}")
-                continue
-            
-            # Get current price
-            stock = yf.Ticker(ticker)
-            price = get_current_price(stock)
+            # DEPRECATED - yfinance removed due to rate limiting
+            # Use run_earnings_scan_ib.py instead
+            print(f"  [ERROR] This scanner is deprecated - use run_earnings_scan_ib.py instead")
+            continue
             
             # Extract recommendation details
             avg_volume_pass = result.get('avg_volume', False)

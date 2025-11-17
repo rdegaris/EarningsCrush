@@ -1,4 +1,10 @@
+# Dependencies for GUI calculator (calculator.py) - DEPRECATED
+# Use run_earnings_scan_ib.py with Interactive Brokers instead
 FreeSimpleGUI==5.1.1
 numpy==2.1
 scipy==1.15.1
-yfinance==0.2.54
+# yfinance==0.2.54  # REMOVED - use IB scanner instead
+
+# For IB-based scanner (run_earnings_scan_ib.py) - RECOMMENDED
+ib_insync>=0.9.86
+requests>=2.31.0
