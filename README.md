@@ -4,14 +4,16 @@ Scan stocks with upcoming earnings for volatility crush opportunities.
 
 ## ⚠️ Important: Use IB Scanner
 
-**The recommended scanner is `run_earnings_scan_ib.py` which uses Interactive Brokers.**
+**The recommended scanner is `run_earnings_scan_ib.py` which uses:**
+- **Finnhub API** for earnings dates (no rate limits)
+- **Interactive Brokers** for all pricing and trade data (real-time market data)
 
-### Why IB Scanner?
-- ✅ Real-time market data
-- ✅ Accurate option prices and IVs
-- ✅ No rate limiting
-- ✅ Generates exact trade suggestions with prices
-- ✅ Production-ready
+### Data Sources
+- ✅ **Earnings Dates**: Finnhub API
+- ✅ **Stock Prices**: IB real-time market data
+- ✅ **Option Prices**: IB real-time bid/ask
+- ✅ **Implied Volatility**: IB greeks
+- ✅ **Trade Suggestions**: IB actual market prices
 
 ### Deprecated Files
 - ❌ `calculator.py` - GUI tool (uses yfinance)

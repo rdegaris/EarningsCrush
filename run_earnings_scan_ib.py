@@ -1,5 +1,12 @@
 """
-Earnings Crush Scanner using Interactive Brokers - Daily Runner
+Earnings Crush Scanner using Finnhub + Interactive Brokers - Daily Runner
+
+Data Sources:
+- Earnings Dates: Finnhub API (no rate limits)
+- Stock Prices: Interactive Brokers (real-time)
+- Option Prices: Interactive Brokers (real-time market data)
+- Implied Volatility: Interactive Brokers (greeks)
+- Trade Suggestions: Interactive Brokers (actual market prices)
 
 Scans stocks with upcoming earnings and generates recommendations
 for earnings crush trades based on volatility analysis using IB data.
