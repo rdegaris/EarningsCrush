@@ -1,14 +1,240 @@
 {
-  "timestamp": "2025-11-17T15:18:18.824050",
-  "date": "2025-11-17",
+  "timestamp": "2025-11-18T10:20:22.384087",
+  "date": "2025-11-18",
   "total_scanned": 40,
   "earnings_found": 10,
-  "opportunities": [],
+  "opportunities": [
+    {
+      "ticker": "PANW",
+      "price": 202.61,
+      "earnings_date": "2025-11-19",
+      "days_to_earnings": 1,
+      "iv": 92.8,
+      "expected_move": 17.65,
+      "expected_move_pct": 8.7,
+      "recommendation": "RECOMMENDED",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": true,
+        "ts_slope_0_45": true
+      },
+      "suggested_trade": {
+        "strike": 200.0,
+        "sell_expiration": "2025-11-21",
+        "buy_expiration": "2025-12-19",
+        "sell_dte": 3,
+        "buy_dte": 31,
+        "sell_price": 8.82,
+        "buy_price": 12.4,
+        "net_credit": -3.58
+      }
+    },
+    {
+      "ticker": "INTU",
+      "price": 649.14,
+      "earnings_date": "2025-11-20",
+      "days_to_earnings": 2,
+      "iv": 84.3,
+      "expected_move": 40.4,
+      "expected_move_pct": 6.2,
+      "recommendation": "RECOMMENDED",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": true,
+        "ts_slope_0_45": true
+      },
+      "suggested_trade": {
+        "strike": 650.0,
+        "sell_expiration": "2025-11-21",
+        "buy_expiration": "2025-12-19",
+        "sell_dte": 3,
+        "buy_dte": 31,
+        "sell_price": 20.2,
+        "buy_price": 32.85,
+        "net_credit": -12.65
+      }
+    },
+    {
+      "ticker": "WDAY",
+      "price": 225.25,
+      "earnings_date": "2025-11-25",
+      "days_to_earnings": 7,
+      "iv": 50.0,
+      "expected_move": 15.5,
+      "expected_move_pct": 6.9,
+      "recommendation": "AVOID",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": false,
+        "ts_slope_0_45": true
+      },
+      "suggested_trade": {
+        "strike": 230.0,
+        "sell_expiration": "2025-11-28",
+        "buy_expiration": "2025-12-19",
+        "sell_dte": 10,
+        "buy_dte": 31,
+        "sell_price": 7.75,
+        "buy_price": 10.8,
+        "net_credit": -3.05
+      }
+    },
+    {
+      "ticker": "ZS",
+      "price": 296.28,
+      "earnings_date": "2025-11-25",
+      "days_to_earnings": 7,
+      "iv": 79.7,
+      "expected_move": 27.35,
+      "expected_move_pct": 9.2,
+      "recommendation": "CONSIDER",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": true,
+        "ts_slope_0_45": true
+      },
+      "suggested_trade": {
+        "strike": 300.0,
+        "sell_expiration": "2025-11-28",
+        "buy_expiration": "2025-12-19",
+        "sell_dte": 10,
+        "buy_dte": 31,
+        "sell_price": 13.68,
+        "buy_price": 18.85,
+        "net_credit": -5.18
+      }
+    },
+    {
+      "ticker": "CRWD",
+      "price": 520.82,
+      "earnings_date": "2025-12-02",
+      "days_to_earnings": 14,
+      "iv": 50.0,
+      "expected_move": 56.95,
+      "expected_move_pct": 10.9,
+      "recommendation": "AVOID",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": false,
+        "ts_slope_0_45": true
+      },
+      "suggested_trade": {
+        "strike": 520.0,
+        "sell_expiration": "2025-12-05",
+        "buy_expiration": "2025-12-19",
+        "sell_dte": 17,
+        "buy_dte": 31,
+        "sell_price": 28.48,
+        "buy_price": 33.75,
+        "net_credit": -5.27
+      }
+    },
+    {
+      "ticker": "SNOW",
+      "price": 255.76,
+      "earnings_date": "2025-12-03",
+      "days_to_earnings": 15,
+      "iv": 50.0,
+      "expected_move": 27.5,
+      "expected_move_pct": 10.8,
+      "recommendation": "AVOID",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": false,
+        "ts_slope_0_45": false
+      },
+      "suggested_trade": {
+        "strike": 260.0,
+        "sell_expiration": "2025-12-05",
+        "buy_expiration": "2025-12-19",
+        "sell_dte": 17,
+        "buy_dte": 31,
+        "sell_price": 13.75,
+        "buy_price": 16.32,
+        "net_credit": -2.57
+      }
+    },
+    {
+      "ticker": "ADBE",
+      "price": 324.37,
+      "earnings_date": "2025-12-11",
+      "days_to_earnings": 23,
+      "iv": 54.3,
+      "expected_move": 40.55,
+      "expected_move_pct": 12.5,
+      "recommendation": "AVOID",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": true,
+        "ts_slope_0_45": true
+      },
+      "suggested_trade": {
+        "strike": 320.0,
+        "sell_expiration": "2025-12-12",
+        "buy_expiration": "2025-12-19",
+        "sell_dte": 24,
+        "buy_dte": 31,
+        "sell_price": 20.27,
+        "buy_price": 22.02,
+        "net_credit": -1.75
+      }
+    },
+    {
+      "ticker": "AVGO",
+      "price": 346.47,
+      "earnings_date": "2025-12-11",
+      "days_to_earnings": 23,
+      "iv": 50.0,
+      "expected_move": 42.5,
+      "expected_move_pct": 12.3,
+      "recommendation": "AVOID",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": false,
+        "ts_slope_0_45": false
+      },
+      "suggested_trade": {
+        "strike": 350.0,
+        "sell_expiration": "2025-12-12",
+        "buy_expiration": "2025-12-19",
+        "sell_dte": 24,
+        "buy_dte": 31,
+        "sell_price": 21.25,
+        "buy_price": 23.1,
+        "net_credit": -1.85
+      }
+    },
+    {
+      "ticker": "COST",
+      "price": 903.93,
+      "earnings_date": "2025-12-11",
+      "days_to_earnings": 23,
+      "iv": 50.0,
+      "expected_move": 62.5,
+      "expected_move_pct": 6.9,
+      "recommendation": "AVOID",
+      "criteria": {
+        "avg_volume": true,
+        "iv30_rv30": false,
+        "ts_slope_0_45": true
+      },
+      "suggested_trade": {
+        "strike": 900.0,
+        "sell_expiration": "2025-12-12",
+        "buy_expiration": "2025-12-19",
+        "sell_dte": 24,
+        "buy_dte": 31,
+        "sell_price": 31.25,
+        "buy_price": 34.6,
+        "net_credit": -3.35
+      }
+    }
+  ],
   "summary": {
-    "total_recommended": 0,
-    "total_consider": 0,
-    "total_avoid": 0,
-    "avg_iv": 0,
-    "avg_expected_move": 0
+    "total_recommended": 2,
+    "total_consider": 1,
+    "total_avoid": 6,
+    "avg_iv": 62.3,
+    "avg_expected_move": 9.4
   }
 }
