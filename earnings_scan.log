@@ -1,0 +1,250 @@
+nohup: ignoring input
+API connection failed: CancelledError()
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Connecting to Interactive Brokers...
+Make sure IB Gateway or TWS is running with API enabled
+
+
+================================================================================
+EARNINGS CRUSH SCANNER (IB)
+================================================================================
+
+Scanning 40 tickers for earnings in next 30 days...
+
+  [INFO] ADBE: Earnings in 17 days (2025-12-11)
+  [INFO] AVGO: Earnings in 17 days (2025-12-11)
+  [INFO] COST: Earnings in 17 days (2025-12-11)
+  [INFO] CRWD: Earnings in 8 days (2025-12-02)
+  [INFO] SNOW: Earnings in 9 days (2025-12-03)
+  [INFO] WDAY: Earnings in 1 days (2025-11-25)
+  [INFO] ZS: Earnings in 1 days (2025-11-25)
+
+Found 7 stocks with upcoming earnings
+
+Analyzing options data from IB...
+
+[SCAN] WDAY (Earnings: 2025-11-25, 1 days)
+  [ERROR] Failed to analyze WDAY: Not connected
+    Traceback (most recent call last):
+  File "C:\Ryan\CTA Business\EarningsCrush\earnings-crush-calculator\run_earnings_scan_ib.py", line 270, in run_earnings_scan_ib
+    ib.qualifyContracts(stock)
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 570, in qualifyContracts
+    return self._run(self.qualifyContractsAsync(*contracts))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 318, in _run
+    return util.run(*awaitables, timeout=self.RequestTimeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\util.py", line 341, in run
+    result = loop.run_until_complete(task)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\asyncio\base_events.py", line 653, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1798, in qualifyContractsAsync
+    detailsLists = await asyncio.gather(
+                         ^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1799, in <genexpr>
+    *(self.reqContractDetailsAsync(c) for c in contracts))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1929, in reqContractDetailsAsync
+    reqId = self.client.getReqId()
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\client.py", line 160, in getReqId
+    raise ConnectionError('Not connected')
+ConnectionError: Not connected
+
+[SCAN] ZS (Earnings: 2025-11-25, 1 days)
+  [ERROR] Failed to analyze ZS: Not connected
+    Traceback (most recent call last):
+  File "C:\Ryan\CTA Business\EarningsCrush\earnings-crush-calculator\run_earnings_scan_ib.py", line 270, in run_earnings_scan_ib
+    ib.qualifyContracts(stock)
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 570, in qualifyContracts
+    return self._run(self.qualifyContractsAsync(*contracts))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 318, in _run
+    return util.run(*awaitables, timeout=self.RequestTimeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\util.py", line 341, in run
+    result = loop.run_until_complete(task)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\asyncio\base_events.py", line 653, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1798, in qualifyContractsAsync
+    detailsLists = await asyncio.gather(
+                         ^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1799, in <genexpr>
+    *(self.reqContractDetailsAsync(c) for c in contracts))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1929, in reqContractDetailsAsync
+    reqId = self.client.getReqId()
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\client.py", line 160, in getReqId
+    raise ConnectionError('Not connected')
+ConnectionError: Not connected
+
+[SCAN] CRWD (Earnings: 2025-12-02, 8 days)
+  [ERROR] Failed to analyze CRWD: Not connected
+    Traceback (most recent call last):
+  File "C:\Ryan\CTA Business\EarningsCrush\earnings-crush-calculator\run_earnings_scan_ib.py", line 270, in run_earnings_scan_ib
+    ib.qualifyContracts(stock)
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 570, in qualifyContracts
+    return self._run(self.qualifyContractsAsync(*contracts))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 318, in _run
+    return util.run(*awaitables, timeout=self.RequestTimeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\util.py", line 341, in run
+    result = loop.run_until_complete(task)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\asyncio\base_events.py", line 653, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1798, in qualifyContractsAsync
+    detailsLists = await asyncio.gather(
+                         ^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1799, in <genexpr>
+    *(self.reqContractDetailsAsync(c) for c in contracts))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1929, in reqContractDetailsAsync
+    reqId = self.client.getReqId()
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\client.py", line 160, in getReqId
+    raise ConnectionError('Not connected')
+ConnectionError: Not connected
+
+[SCAN] SNOW (Earnings: 2025-12-03, 9 days)
+  [ERROR] Failed to analyze SNOW: Not connected
+    Traceback (most recent call last):
+  File "C:\Ryan\CTA Business\EarningsCrush\earnings-crush-calculator\run_earnings_scan_ib.py", line 270, in run_earnings_scan_ib
+    ib.qualifyContracts(stock)
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 570, in qualifyContracts
+    return self._run(self.qualifyContractsAsync(*contracts))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 318, in _run
+    return util.run(*awaitables, timeout=self.RequestTimeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\util.py", line 341, in run
+    result = loop.run_until_complete(task)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\asyncio\base_events.py", line 653, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1798, in qualifyContractsAsync
+    detailsLists = await asyncio.gather(
+                         ^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1799, in <genexpr>
+    *(self.reqContractDetailsAsync(c) for c in contracts))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1929, in reqContractDetailsAsync
+    reqId = self.client.getReqId()
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\client.py", line 160, in getReqId
+    raise ConnectionError('Not connected')
+ConnectionError: Not connected
+
+[SCAN] ADBE (Earnings: 2025-12-11, 17 days)
+  [ERROR] Failed to analyze ADBE: Not connected
+    Traceback (most recent call last):
+  File "C:\Ryan\CTA Business\EarningsCrush\earnings-crush-calculator\run_earnings_scan_ib.py", line 270, in run_earnings_scan_ib
+    ib.qualifyContracts(stock)
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 570, in qualifyContracts
+    return self._run(self.qualifyContractsAsync(*contracts))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 318, in _run
+    return util.run(*awaitables, timeout=self.RequestTimeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\util.py", line 341, in run
+    result = loop.run_until_complete(task)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\asyncio\base_events.py", line 653, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1798, in qualifyContractsAsync
+    detailsLists = await asyncio.gather(
+                         ^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1799, in <genexpr>
+    *(self.reqContractDetailsAsync(c) for c in contracts))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1929, in reqContractDetailsAsync
+    reqId = self.client.getReqId()
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\client.py", line 160, in getReqId
+    raise ConnectionError('Not connected')
+ConnectionError: Not connected
+
+[SCAN] AVGO (Earnings: 2025-12-11, 17 days)
+  [ERROR] Failed to analyze AVGO: Not connected
+    Traceback (most recent call last):
+  File "C:\Ryan\CTA Business\EarningsCrush\earnings-crush-calculator\run_earnings_scan_ib.py", line 270, in run_earnings_scan_ib
+    ib.qualifyContracts(stock)
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 570, in qualifyContracts
+    return self._run(self.qualifyContractsAsync(*contracts))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 318, in _run
+    return util.run(*awaitables, timeout=self.RequestTimeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\util.py", line 341, in run
+    result = loop.run_until_complete(task)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\asyncio\base_events.py", line 653, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1798, in qualifyContractsAsync
+    detailsLists = await asyncio.gather(
+                         ^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1799, in <genexpr>
+    *(self.reqContractDetailsAsync(c) for c in contracts))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1929, in reqContractDetailsAsync
+    reqId = self.client.getReqId()
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\client.py", line 160, in getReqId
+    raise ConnectionError('Not connected')
+ConnectionError: Not connected
+
+[SCAN] COST (Earnings: 2025-12-11, 17 days)
+  [ERROR] Failed to analyze COST: Not connected
+    Traceback (most recent call last):
+  File "C:\Ryan\CTA Business\EarningsCrush\earnings-crush-calculator\run_earnings_scan_ib.py", line 270, in run_earnings_scan_ib
+    ib.qualifyContracts(stock)
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 570, in qualifyContracts
+    return self._run(self.qualifyContractsAsync(*contracts))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 318, in _run
+    return util.run(*awaitables, timeout=self.RequestTimeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\util.py", line 341, in run
+    result = loop.run_until_complete(task)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\asyncio\base_events.py", line 653, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1798, in qualifyContractsAsync
+    detailsLists = await asyncio.gather(
+                         ^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1799, in <genexpr>
+    *(self.reqContractDetailsAsync(c) for c in contracts))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\ib.py", line 1929, in reqContractDetailsAsync
+    reqId = self.client.getReqId()
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rdega\AppData\Local\Programs\Python\Python311\Lib\site-packages\ib_insync\client.py", line 160, in getReqId
+    raise ConnectionError('Not connected')
+ConnectionError: Not connected
+
+
+================================================================================
+SCAN COMPLETE
+================================================================================
+Total analyzed: 0
+Recommended: 0
+Consider: 0
+Avoid: 0
+
+[OK] Results saved to earnings_crush_latest.json
+
+Disconnected from IB
