@@ -486,7 +486,17 @@ if __name__ == "__main__":
                 with open(web_file, 'w') as f:
                     json.dump(results, f, indent=2)
                 print(f"[OK] Results copied to {web_file}")
+            
+            sys.exit(0)  # Explicit success exit code
+        else:
+            print("[ERROR] Scan returned no results")
+            sys.exit(1)
         
+    except Exception as e:
+        print(f"\n[ERROR] Scan failed with exception: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
     finally:
         ib.disconnect()
         print("\nDisconnected from IB")
