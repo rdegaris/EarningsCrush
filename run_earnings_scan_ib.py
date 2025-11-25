@@ -478,16 +478,14 @@ if __name__ == "__main__":
             with open(output_file, 'w') as f:
                 json.dump(results, f, indent=2)
             print(f"[OK] Results saved to {output_file}")
-            
-            # Also save to web repo if it exists
-            web_public = Path(__file__).parent.parent.parent / 'forward-volatility-web' / 'public'
-            if web_public.exists():
-                web_file = web_public / output_file
-                with open(web_file, 'w') as f:
-                    json.dump(results, f, indent=2)
-                print(f"[OK] Results copied to {web_file}")
-            
-            sys.exit(0)  # Explicit success exit code
+            print()
+        
+        ib.disconnect()
+        print("Disconnected from IB")
+        
+        # Exit with success if we got results
+        if results:
+            sys.exit(0)
         else:
             print("[ERROR] Scan returned no results")
             sys.exit(1)
@@ -496,7 +494,8 @@ if __name__ == "__main__":
         print(f"\n[ERROR] Scan failed with exception: {e}")
         import traceback
         traceback.print_exc()
+        try:
+            ib.disconnect()
+        except:
+            pass
         sys.exit(1)
-    finally:
-        ib.disconnect()
-        print("\nDisconnected from IB")
