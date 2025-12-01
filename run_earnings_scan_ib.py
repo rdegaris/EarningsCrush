@@ -449,7 +449,7 @@ if __name__ == "__main__":
         
         # Try common ports
         connected = False
-        for port in [7497, 4002, 7496, 4001]:
+        for port in [7498, 4002, 7496, 4001]:
             try:
                 ib.connect('127.0.0.1', port, clientId=999)
                 connected = True
@@ -463,7 +463,7 @@ if __name__ == "__main__":
             print("Make sure:")
             print("  1. IB Gateway or TWS is running")
             print("  2. API connections are enabled")
-            print("  3. Socket port is correct (7497 for TWS paper, 4002 for Gateway paper)")
+            print("  3. Socket port is correct (7498 for TWS paper, 4002 for Gateway paper)")
             sys.exit(1)
         
         print()
