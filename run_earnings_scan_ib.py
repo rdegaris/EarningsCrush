@@ -140,7 +140,7 @@ def get_option_chain_ib(ib, ticker, strike, days_target_min, days_target_max):
         return []
 
 
-def get_option_price_and_iv(ib, option_contract):
+def get_option_price_and_iv(ib, option_contract, stock_price=None):
     """
     Get market price and IV for an option from IB.
     
@@ -156,19 +156,11 @@ def get_option_price_and_iv(ib, option_contract):
         
         qualified_contract = contracts[0]
         
-        # Request market data with greeks (221 for IV)
-        ib.reqMktData(qualified_contract, '106', False, False)
+        # Request market data with greeks (106 = option IV)
+        ticker = ib.reqMktData(qualified_contract, '106', False, False)
         
-        # Wait for data to populate
-        for i in range(10):  # Try up to 5 seconds
-            ib.sleep(0.5)
-            ticker = ib.ticker(qualified_contract)
-            
-            # Check if we have price data
-            if ticker and (ticker.bid or ticker.ask or ticker.last):
-                break
-        
-        ticker = ib.ticker(qualified_contract)
+        # Wait for data to populate (2 seconds like the working scanner)
+        ib.sleep(2)
         
         if not ticker:
             print(f"      No ticker data received")
@@ -191,8 +183,10 @@ def get_option_price_and_iv(ib, option_contract):
         else:
             mid = None
         
-        # Get IV from model greeks or bid/ask IV
+        # Get IV - try multiple methods
         iv = None
+        
+        # Method 1: modelGreeks (pre-calculated by IB for liquid options)
         if ticker.modelGreeks and ticker.modelGreeks.impliedVol:
             iv = ticker.modelGreeks.impliedVol
         elif ticker.bidGreeks and ticker.bidGreeks.impliedVol:
@@ -201,6 +195,22 @@ def get_option_price_and_iv(ib, option_contract):
             iv = ticker.askGreeks.impliedVol
         elif ticker.lastGreeks and ticker.lastGreeks.impliedVol:
             iv = ticker.lastGreeks.impliedVol
+        
+        # Method 2: Calculate IV from option price if modelGreeks not available
+        # This is critical for less liquid stocks where IB doesn't provide modelGreeks
+        if not iv and mid and mid > 0 and stock_price and stock_price > 0:
+            try:
+                calc_result = ib.calculateImpliedVolatility(
+                    qualified_contract, 
+                    mid,  # option price
+                    stock_price  # underlying price
+                )
+                ib.sleep(1)  # Wait for calculation
+                if calc_result and hasattr(calc_result, 'impliedVolatility') and calc_result.impliedVolatility:
+                    iv = calc_result.impliedVolatility
+                    print(f"      IV calculated from price: {iv*100:.1f}%")
+            except Exception as e:
+                print(f"      Could not calculate IV: {e}")
         
         # Cancel market data
         ib.cancelMktData(qualified_contract)
@@ -300,12 +310,12 @@ def run_earnings_scan_ib(ib, tickers, days_ahead=30):
             front_exp, front_dte, front_call = front_options[0]
             back_exp, back_dte, back_call = back_options[0]
             
-            # Get option prices and IVs
+            # Get option prices and IVs (pass stock price for IV calculation fallback)
             print(f"    Getting front month option data...")
-            front_price, front_iv = get_option_price_and_iv(ib, front_call)
+            front_price, front_iv = get_option_price_and_iv(ib, front_call, price)
             
             print(f"    Getting back month option data...")
-            back_price, back_iv = get_option_price_and_iv(ib, back_call)
+            back_price, back_iv = get_option_price_and_iv(ib, back_call, price)
             
             if not front_price or not back_price:
                 print(f"  [SKIP] Could not get option prices (Front: {front_price}, Back: {back_price})")
