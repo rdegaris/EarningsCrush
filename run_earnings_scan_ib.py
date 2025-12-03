@@ -342,21 +342,36 @@ def run_earnings_scan_ib(ib, tickers, days_ahead=30):
             
             # Calculate metrics
             atm_iv = front_iv * 100  # Convert to percentage
+            back_iv_pct = back_iv * 100
+            
+            # IV term structure slope (front vs back)
+            # Positive slope = front IV higher than back (good for earnings crush)
+            iv_slope = front_iv - back_iv  # In decimal form
+            iv_slope_pct = (front_iv / back_iv - 1) * 100 if back_iv > 0 else 0  # % premium
             
             # Estimate expected move based on straddle
             straddle_price = front_price * 2  # Approximate (call price * 2 for ATM)
             expected_move_pct = (straddle_price / price) * 100
             expected_move_dollars = straddle_price
             
-            # Simple recommendation logic
-            # RECOMMENDED: High IV (>60%), front month close to earnings
-            # CONSIDER: Moderate IV (>50%)
-            # AVOID: Low IV or poor timing
+            # Recommendation logic incorporating IV slope
+            # For earnings crush, we NEED front IV > back IV (positive term structure)
+            # RECOMMENDED: High IV (>60%), front > back, close to earnings
+            # CONSIDER: Moderate IV (>50%), front > back
+            # AVOID: Low IV, or front IV <= back IV (no crush opportunity)
             
-            if atm_iv > 60 and days_until <= 5:
+            has_positive_slope = front_iv > back_iv
+            
+            if not has_positive_slope:
+                # No term structure edge - can't profit from IV crush
+                recommendation = "AVOID"
+                avoid_count += 1
+            elif atm_iv > 60 and days_until <= 5 and iv_slope_pct > 10:
+                # High IV, good slope (>10% premium), close to earnings
                 recommendation = "RECOMMENDED"
                 recommended_count += 1
-            elif atm_iv > 50 and days_until <= 7:
+            elif atm_iv > 50 and days_until <= 7 and iv_slope_pct > 5:
+                # Moderate IV, decent slope
                 recommendation = "CONSIDER"
                 consider_count += 1
             else:
@@ -387,14 +402,19 @@ def run_earnings_scan_ib(ib, tickers, days_ahead=30):
                 'criteria': {
                     'avg_volume': True,  # Assume liquid stocks
                     'iv30_rv30': atm_iv > 50,
-                    'ts_slope_0_45': front_iv > back_iv  # Front higher than back
+                    'ts_slope_positive': has_positive_slope,  # Front IV > Back IV
+                    'iv_slope_pct': round(iv_slope_pct, 1)  # % premium of front over back
                 },
+                'front_iv': round(atm_iv, 1),
+                'back_iv': round(back_iv_pct, 1),
                 'suggested_trade': suggested_trade
             }
             
             opportunities.append(opportunity)
             
-            print(f"  [{recommendation}] Price: ${price:.2f}, IV: {atm_iv:.1f}%, Expected Move: ±{expected_move_pct:.1f}%")
+            slope_str = f"+{iv_slope_pct:.1f}%" if iv_slope_pct > 0 else f"{iv_slope_pct:.1f}%"
+            print(f"  [{recommendation}] Price: ${price:.2f}, Front IV: {atm_iv:.1f}%, Back IV: {back_iv_pct:.1f}%, Slope: {slope_str}")
+            print(f"    Expected Move: ±{expected_move_pct:.1f}%")
             print(f"    Trade: Sell {suggested_trade['sell_expiration']} / Buy {suggested_trade['buy_expiration']} ${atm_strike} CALL")
             print(f"    Net Credit: ${suggested_trade['net_credit']:.2f} (Sell ${suggested_trade['sell_price']:.2f} - Buy ${suggested_trade['buy_price']:.2f})")
             
