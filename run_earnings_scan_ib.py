@@ -294,21 +294,32 @@ def run_earnings_scan_ib(ib, tickers, days_ahead=30):
             # Get ATM strike
             atm_strike = get_atm_strike(price)
             
-            # Get front month options (near earnings)
+            # Get front month options (near earnings - first expiry after earnings)
             front_options = get_option_chain_ib(ib, ticker, atm_strike, 
                                                max(1, days_until - 3), 
                                                days_until + 7)
             
-            # Get back month options (30 days out)
-            back_options = get_option_chain_ib(ib, ticker, atm_strike, 25, 45)
-            
-            if not front_options or not back_options:
-                print(f"  [SKIP] Insufficient option chain data")
+            if not front_options:
+                print(f"  [SKIP] No front month options found")
                 continue
             
-            # Use first matching expiration for each
+            # Use first matching expiration for front
             front_exp, front_dte, front_call = front_options[0]
+            
+            # Get back month options (~30 days from FRONT expiry, not from today)
+            # Calculate target DTE range: front_dte + 25 to front_dte + 35
+            back_dte_min = front_dte + 25
+            back_dte_max = front_dte + 35
+            back_options = get_option_chain_ib(ib, ticker, atm_strike, back_dte_min, back_dte_max)
+            
+            if not back_options:
+                print(f"  [SKIP] No back month options found (need {back_dte_min}-{back_dte_max} DTE)")
+                continue
+            
+            # Use first matching expiration for back
             back_exp, back_dte, back_call = back_options[0]
+            
+            print(f"    Front: {front_exp} ({front_dte} DTE), Back: {back_exp} ({back_dte} DTE), Gap: {back_dte - front_dte} days")
             
             # Get option prices and IVs (pass stock price for IV calculation fallback)
             print(f"    Getting front month option data...")
