@@ -22,6 +22,8 @@ from pathlib import Path
 import requests
 import os
 
+from earnings_cache import get_next_earnings_date_cached
+
 try:
     from ib_insync import IB, Stock, Option, util
     IB_AVAILABLE = True
@@ -30,6 +32,15 @@ except ImportError:
     print("ERROR: ib_insync not installed")
     print("Install with: pip install ib_insync")
     sys.exit(1)
+
+
+IB_HOST = os.environ.get("IB_HOST", "127.0.0.1")
+IB_PORTS = [
+    int(p)
+    for p in os.environ.get("IB_PORTS", "7498,4002,7496,4001").split(",")
+    if p.strip()
+]
+IB_CLIENT_ID = int(os.environ.get("IB_CLIENT_ID", "999"))
 
 
 def get_upcoming_earnings(tickers, days_ahead=30):
@@ -47,7 +58,10 @@ def get_upcoming_earnings(tickers, days_ahead=30):
     today = date.today()
     
     # Use Finnhub API key
-    api_key = os.environ.get('FINNHUB_API_KEY', 'd3rcvl1r01qopgh82hs0d3rcvl1r01qopgh82hsg')
+    api_key = (os.environ.get('FINNHUB_API_KEY') or '').strip()
+    if not api_key:
+        print("  [ERROR] FINNHUB_API_KEY not set; cannot fetch upcoming earnings")
+        return []
     
     # Get earnings calendar for next N days
     from_date = today.strftime('%Y-%m-%d')
@@ -55,26 +69,15 @@ def get_upcoming_earnings(tickers, days_ahead=30):
     
     for ticker in tickers:
         try:
-            url = f"https://finnhub.io/api/v1/calendar/earnings?from={from_date}&to={to_date}&symbol={ticker}&token={api_key}"
-            response = requests.get(url, timeout=10)
-            
-            if response.status_code == 200:
-                data = response.json()
-                
-                # Check if we have earnings data
-                if data and 'earningsCalendar' in data and len(data['earningsCalendar']) > 0:
-                    # Get the first (nearest) earnings date
-                    earnings_entry = data['earningsCalendar'][0]
-                    date_str = earnings_entry.get('date')
-                    
-                    if date_str:
-                        earnings_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-                        days_until = (earnings_date - today).days
-                        
-                        # Only include if within our timeframe and in the future
-                        if 0 <= days_until <= days_ahead:
-                            upcoming.append((ticker, date_str, days_until))
-                            print(f"  [INFO] {ticker}: Earnings in {days_until} days ({date_str})")
+            date_str = get_next_earnings_date_cached(ticker, days_ahead=days_ahead, token=api_key)
+            if date_str:
+                earnings_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                days_until = (earnings_date - today).days
+
+                # Only include if within our timeframe and in the future
+                if 0 <= days_until <= days_ahead:
+                    upcoming.append((ticker, date_str, days_until))
+                    print(f"  [INFO] {ticker}: Earnings in {days_until} days ({date_str})")
         except Exception as e:
             print(f"  [WARNING] Could not get earnings for {ticker}: {e}")
             continue
@@ -490,9 +493,9 @@ if __name__ == "__main__":
         
         # Try common ports
         connected = False
-        for port in [7498, 4002, 7496, 4001]:
+        for port in IB_PORTS:
             try:
-                ib.connect('127.0.0.1', port, clientId=999)
+                ib.connect(IB_HOST, port, clientId=IB_CLIENT_ID)
                 connected = True
                 print(f"✓ Connected on port {port}")
                 break

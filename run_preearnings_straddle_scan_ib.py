@@ -19,7 +19,7 @@ Usage:
 
 Notes:
 - Requires IB Gateway or TWS with API enabled.
-- Requires FINNHUB_API_KEY env var (fallback key exists but you should set your own).
+- Requires FINNHUB_API_KEY env var.
 """
 
 import json
@@ -30,6 +30,8 @@ from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import requests
+
+from earnings_cache import fetch_earnings_calendar_cached
 
 try:
     from ib_insync import IB, Stock, Option
@@ -50,6 +52,15 @@ HISTORICAL_EVENTS_MAX = 6
 MAX_REL_BID_ASK_SPREAD = 0.35  # skip if (ask-bid)/mid too wide
 
 
+IB_HOST = os.environ.get("IB_HOST", "127.0.0.1")
+IB_PORTS = [
+    int(p)
+    for p in os.environ.get("IB_PORTS", "7498,4002,7496,4001").split(",")
+    if p.strip()
+]
+IB_CLIENT_ID = int(os.environ.get("IB_CLIENT_ID", "1001"))
+
+
 @dataclass
 class HistoricalMove:
     earnings_date: str
@@ -58,7 +69,7 @@ class HistoricalMove:
 
 
 def _finnhub_key() -> str:
-    return os.environ.get("FINNHUB_API_KEY", "d3rcvl1r01qopgh82hs0d3rcvl1r01qopgh82hsg")
+    return (os.environ.get("FINNHUB_API_KEY") or "").strip()
 
 
 def get_atm_strike(price: float) -> float:
@@ -75,19 +86,10 @@ def fetch_earnings_calendar(
     from_date: date,
     to_date: date,
 ) -> List[Dict[str, Any]]:
-    url = (
-        "https://finnhub.io/api/v1/calendar/earnings"
-        f"?from={from_date.strftime('%Y-%m-%d')}"
-        f"&to={to_date.strftime('%Y-%m-%d')}"
-        f"&symbol={symbol}"
-        f"&token={_finnhub_key()}"
-    )
-    resp = requests.get(url, timeout=15)
-    if resp.status_code != 200:
+    token = _finnhub_key()
+    if not token:
         return []
-    data = resp.json() or {}
-    cal = data.get("earningsCalendar") or []
-    return [x for x in cal if isinstance(x, dict)]
+    return fetch_earnings_calendar_cached(symbol, from_date, to_date, token)
 
 
 def get_next_earnings_within(
@@ -517,6 +519,11 @@ def run_scan(ib: IB, tickers: Sequence[str]) -> Dict[str, Any]:
 
 
 def main() -> int:
+    if not _finnhub_key():
+        print("ERROR: FINNHUB_API_KEY not set; cannot fetch earnings calendar")
+        print("Set FINNHUB_API_KEY in your environment and re-run")
+        return 1
+
     if not IB_AVAILABLE:
         print("ERROR: ib_insync not installed")
         print("Install with: pip install ib_insync")
@@ -529,9 +536,9 @@ def main() -> int:
         print()
 
         connected = False
-        for port in [7498, 4002, 7496, 4001]:
+        for port in IB_PORTS:
             try:
-                ib.connect("127.0.0.1", port, clientId=1001)
+                ib.connect(IB_HOST, port, clientId=IB_CLIENT_ID)
                 connected = True
                 print(f"✓ Connected on port {port}")
                 break

@@ -1,0 +1,16 @@
+{
+  "timestamp": "2025-12-13T10:42:36.526291",
+  "date": "2025-12-13",
+  "entry_target_days": 14,
+  "entry_window_days": 3,
+  "universe_size": 40,
+  "earnings_found": 7,
+  "candidates_scanned": 0,
+  "opportunities": [],
+  "summary": {
+    "total_opportunities": 0,
+    "total_candidate": 0,
+    "total_watch": 0,
+    "total_pass": 0
+  }
+}
