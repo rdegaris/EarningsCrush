@@ -1,10 +1,10 @@
 {
-  "timestamp": "2025-12-13T10:42:36.526291",
-  "date": "2025-12-13",
+  "timestamp": "2025-12-16T08:13:49.794439",
+  "date": "2025-12-16",
   "entry_target_days": 14,
   "entry_window_days": 3,
   "universe_size": 40,
-  "earnings_found": 7,
+  "earnings_found": 13,
   "candidates_scanned": 0,
   "opportunities": [],
   "summary": {

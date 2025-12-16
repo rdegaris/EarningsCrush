@@ -22,6 +22,46 @@ from pathlib import Path
 import requests
 import os
 
+
+def _load_env_file(path: Path) -> bool:
+    """Load KEY=VALUE lines into os.environ (no overrides).
+
+    Lightweight .env reader to support Task Scheduler / .bat runs.
+    """
+    try:
+        if not path.exists() or not path.is_file():
+            return False
+        loaded_any = False
+        for raw in path.read_text(encoding='utf-8').splitlines():
+            line = raw.strip()
+            if not line or line.startswith('#'):
+                continue
+            if line.lower().startswith('export '):
+                line = line[7:].strip()
+            if '=' not in line:
+                continue
+            key, value = line.split('=', 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if not key:
+                continue
+            if key in os.environ and (os.environ.get(key) or '').strip():
+                continue
+            os.environ[key] = value
+            loaded_any = True
+        return loaded_any
+    except Exception:
+        return False
+
+
+def load_local_secrets() -> None:
+    script_dir = Path(__file__).parent.resolve()
+    for candidate in (script_dir / '.secrets.env', script_dir / '.env'):
+        _load_env_file(candidate)
+
+
+load_local_secrets()
+
 from earnings_cache import get_next_earnings_date_cached
 
 try:
