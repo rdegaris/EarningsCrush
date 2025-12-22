@@ -103,6 +103,29 @@ IB_PORTS = [
 IB_CLIENT_ID = int(os.environ.get("IB_CLIENT_ID", "1001"))
 
 
+def _try_import_forward_vol_lists() -> tuple[list[str] | None, list[str] | None]:
+    """Try to import NASDAQ100 + MidCap400 lists from forward-volatility-calculator.
+
+    This repo lives alongside this scanner in the workspace, but not as a Python package.
+    We add it to sys.path at runtime to reuse its ticker list sources.
+    """
+    try:
+        cta_root = Path(__file__).resolve().parents[2]  # .../CTA Business
+        fv_calc = cta_root / "Forward Volatility" / "forward-volatility-calculator"
+        if not fv_calc.exists():
+            return None, None
+
+        if str(fv_calc) not in sys.path:
+            sys.path.insert(0, str(fv_calc))
+
+        from nasdaq100 import get_nasdaq_100_list  # type: ignore
+        from midcap400 import get_midcap400_list  # type: ignore
+
+        return list(get_nasdaq_100_list()), list(get_midcap400_list())
+    except Exception:
+        return None, None
+
+
 @dataclass
 class HistoricalMove:
     earnings_date: str
@@ -365,9 +388,12 @@ def fetch_historical_gap_moves(
 
 
 def get_scan_universe() -> List[str]:
-    # Keep universe consistent with the existing Earnings Crush scan
-    from_mag7 = ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA", "NVDA"]
+    # Desired: scan NASDAQ100 + MidCap400 (drop MAG7 special-casing).
+    n100, mid400 = _try_import_forward_vol_lists()
+    if n100 and mid400:
+        return sorted(set([t.strip().upper() for t in (n100 + mid400) if str(t).strip()]))
 
+    # Fallback: previous small universe (kept only as a safety net).
     from_nasdaq100 = [
         "ADBE",
         "AMD",
@@ -404,8 +430,7 @@ def get_scan_universe() -> List[str]:
         "ZS",
     ]
 
-    all_tickers = sorted(set(from_mag7 + from_nasdaq100))
-    return all_tickers
+    return sorted(set(from_nasdaq100))
 
 
 def run_scan(ib: IB, tickers: Sequence[str]) -> Dict[str, Any]:
@@ -572,6 +597,7 @@ def main() -> int:
         return 1
 
     ib = IB()
+    success = False
     try:
         print("Connecting to Interactive Brokers...")
         print("Make sure IB Gateway or TWS is running with API enabled")
@@ -598,6 +624,8 @@ def main() -> int:
         with open(out_file, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2)
 
+        success = True
+
         print()
         print(f"[OK] Results saved to {out_file}")
         return 0
@@ -613,6 +641,17 @@ def main() -> int:
             ib.disconnect()
         except Exception:
             pass
+
+        # Workaround: on Windows we sometimes see an access-violation crash on interpreter
+        # shutdown after ib_insync usage, even when the scan completed successfully.
+        # If the run succeeded, hard-exit with code 0 to avoid a false failure.
+        if success and os.name == "nt":
+            try:
+                sys.stdout.flush()
+                sys.stderr.flush()
+            except Exception:
+                pass
+            os._exit(0)
 
 
 if __name__ == "__main__":
