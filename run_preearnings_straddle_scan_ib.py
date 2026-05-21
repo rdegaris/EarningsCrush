@@ -33,7 +33,7 @@ from pathlib import Path
 
 import requests
 
-from earnings_cache import fetch_earnings_calendar_cached
+from earnings_cache import fetch_earnings_calendar_cached, fetch_historical_earnings_cached
 
 try:
     from ib_insync import IB, Stock, Option
@@ -85,8 +85,8 @@ load_local_secrets()
 
 # --- Config ---
 ENTRY_DAYS_TARGET = 14
-ENTRY_WINDOW_DAYS = 3  # scan earnings in [target-window, target+window]
-EARNINGS_LOOKAHEAD_DAYS = 45
+ENTRY_WINDOW_DAYS = 7  # scan earnings in [target-window, target+window] - widened to 7-21 days
+EARNINGS_LOOKAHEAD_DAYS = 60  # extended to 60 days to catch more candidates
 HISTORICAL_EARNINGS_LOOKBACK_DAYS = 730
 HISTORICAL_EVENTS_MAX = 6
 
@@ -288,24 +288,29 @@ def fetch_historical_gap_moves(
 ) -> List[HistoricalMove]:
     """Compute realized earnings gap moves for recent historical earnings."""
     today = date.today()
-    from_d = today - timedelta(days=HISTORICAL_EARNINGS_LOOKBACK_DAYS)
-    to_d = today
-
-    cal = fetch_earnings_calendar(ticker, from_d, to_d)
-    # Keep only past events (strictly < today)
+    
+    # Use the earnings surprise endpoint which returns PAST earnings
+    # The calendar endpoint only returns FUTURE earnings
+    token = _finnhub_key()
+    if not token:
+        return []
+    
+    hist_earnings = fetch_historical_earnings_cached(ticker, token, limit=max_events)
+    
+    # Convert to event format: 'period' is the fiscal quarter end (close to announcement date)
     events = []
-    for e in cal:
-        d = e.get("date")
-        if not d:
+    for e in hist_earnings:
+        period = e.get("period")
+        if not period:
             continue
         try:
-            ed = datetime.strptime(d, "%Y-%m-%d").date()
+            ed = datetime.strptime(period, "%Y-%m-%d").date()
         except Exception:
             continue
         if ed >= today:
             continue
-        events.append(e)
-
+        events.append({"date": period, "hour": None})  # Surprise endpoint doesn't have hour
+    
     # Sort most recent first
     events.sort(key=lambda x: x.get("date", ""), reverse=True)
     events = events[:max_events]
@@ -348,20 +353,55 @@ def fetch_historical_gap_moves(
                 continue
             by_date[bd] = b
 
-        prev_day = ed - timedelta(days=1)
-        next_day = ed + timedelta(days=1)
+        # Use nearest available trading days instead of strict +/- 1 day.
+        # Finnhub's "earnings date" can fall on a non-trading day, or IB may omit a bar (holiday, symbol issues, etc).
+        bar_dates = sorted(by_date.keys())
 
-        bar_prev = by_date.get(prev_day)
-        bar_e = by_date.get(ed)
-        bar_next = by_date.get(next_day)
+        def nearest_on_or_before(target: date) -> Optional[date]:
+            for d in reversed(bar_dates):
+                if d <= target:
+                    return d
+            return None
+
+        def nearest_on_or_after(target: date) -> Optional[date]:
+            for d in bar_dates:
+                if d >= target:
+                    return d
+            return None
+
+        def nearest_before(target: date) -> Optional[date]:
+            for d in reversed(bar_dates):
+                if d < target:
+                    return d
+            return None
+
+        def nearest_after(target: date) -> Optional[date]:
+            for d in bar_dates:
+                if d > target:
+                    return d
+            return None
+
+        h = (hour or "").strip().lower()
+        # For BMO, the "event day" is the next trading day (gap shows on the open).
+        # For AMC, the "event day" is the same/previous trading day (gap shows next open).
+        event_day = nearest_on_or_after(ed) if h == "bmo" else nearest_on_or_before(ed)
+        if event_day is None:
+            continue
+
+        prev_day = nearest_before(event_day)
+        next_day = nearest_after(event_day)
+
+        bar_prev = by_date.get(prev_day) if prev_day else None
+        bar_e = by_date.get(event_day)
+        bar_next = by_date.get(next_day) if next_day else None
 
         realized: Optional[float] = None
 
         # Prefer open gaps using bmo/amc if available
-        if hour and hour.lower() == "bmo":
+        if h == "bmo":
             if bar_prev and bar_e and getattr(bar_prev, "close", None) and getattr(bar_e, "open", None):
                 realized = abs(bar_e.open - bar_prev.close) / bar_prev.close
-        elif hour and hour.lower() == "amc":
+        elif h == "amc":
             if bar_e and bar_next and getattr(bar_e, "close", None) and getattr(bar_next, "open", None):
                 realized = abs(bar_next.open - bar_e.close) / bar_e.close
 
@@ -516,13 +556,22 @@ def run_scan(ib: IB, tickers: Sequence[str]) -> Dict[str, Any]:
             if realized_avg and implied_move_pct > 0:
                 score = (realized_avg - implied_move_pct) / implied_move_pct
 
-            # Recommendation heuristic
-            # (kept conservative until we have more historical implied-move data)
+            # ===== EARNINGS RAMP RECOMMENDATION =====
+            # The goal is NOT to find "cheap" straddles (implied < realized).
+            # The goal is to find stocks with:
+            #   1. Meaningful historical moves (stock actually reacts to earnings)
+            #   2. High enough IV to capture ramp expansion
+            #   3. Not absurdly overpriced vs history
+            #
+            # CANDIDATE: Strong movers (realized_avg >= 3%), implied/realized ratio < 4
+            # WATCH: Moderate movers (realized_avg >= 2%), implied/realized ratio < 5
+            # PASS: Low movers or extremely overpriced
+            
             recommendation = "WATCH"
-            if ratio_avg is not None and ratio_last is not None:
-                if ratio_avg <= 0.90 and ratio_last <= 0.95:
+            if realized_avg is not None and ratio_avg is not None:
+                if realized_avg >= 3.0 and ratio_avg < 4.0:
                     recommendation = "CANDIDATE"
-                elif ratio_avg <= 1.00:
+                elif realized_avg >= 2.0 and ratio_avg < 5.0:
                     recommendation = "WATCH"
                 else:
                     recommendation = "PASS"
@@ -564,8 +613,8 @@ def run_scan(ib: IB, tickers: Sequence[str]) -> Dict[str, Any]:
             print(f"  [ERROR] Failed {ticker}: {e}")
             continue
 
-    # Sort by score descending (most attractive first)
-    opportunities.sort(key=lambda x: (x.get("score") is not None, x.get("score") or -1e9), reverse=True)
+    # Sort by realized_avg descending (biggest movers first - these are the ramp candidates)
+    opportunities.sort(key=lambda x: (x.get("realized_move_avg_pct") or 0), reverse=True)
 
     return {
         "timestamp": datetime.now().isoformat(),

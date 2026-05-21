@@ -139,12 +139,94 @@ def get_atm_strike(price):
         return round(price / 10) * 10
 
 
-def get_option_chain_ib(ib, ticker, strike, days_target_min, days_target_max):
+def get_trend_bias(ib, ticker, ema_period=50):
+    """
+    Determine trend bias using EMA.
+    
+    Returns:
+        tuple: (bias, ema_value, price_vs_ema_pct)
+        - bias: 'CALL' if price > EMA (bullish), 'PUT' if price < EMA (bearish)
+        - ema_value: The EMA value
+        - price_vs_ema_pct: How far price is from EMA as percentage
+    """
+    try:
+        from ib_insync import Stock
+        
+        stock = Stock(ticker, 'SMART', 'USD')
+        ib.qualifyContracts(stock)
+        
+        # Request historical data for EMA calculation
+        # Need ema_period + some buffer days
+        bars = ib.reqHistoricalData(
+            stock,
+            endDateTime='',
+            durationStr=f'{ema_period + 20} D',
+            barSizeSetting='1 day',
+            whatToShow='TRADES',
+            useRTH=True,
+            formatDate=1
+        )
+        
+        if not bars or len(bars) < ema_period:
+            print(f"    [WARNING] Not enough historical data for {ticker} EMA")
+            return 'CALL', None, 0  # Default to calls if no data
+        
+        # Calculate EMA
+        closes = [bar.close for bar in bars]
+        ema = calculate_ema(closes, ema_period)
+        
+        if ema is None:
+            return 'CALL', None, 0
+        
+        current_price = closes[-1]
+        price_vs_ema_pct = ((current_price - ema) / ema) * 100
+        
+        # Bullish if price above EMA, bearish if below
+        bias = 'CALL' if current_price > ema else 'PUT'
+        
+        return bias, round(ema, 2), round(price_vs_ema_pct, 2)
+        
+    except Exception as e:
+        print(f"    [WARNING] Error calculating EMA for {ticker}: {e}")
+        return 'CALL', None, 0  # Default to calls on error
+
+
+def calculate_ema(prices, period):
+    """
+    Calculate Exponential Moving Average.
+    
+    Args:
+        prices: List of prices (oldest first)
+        period: EMA period (e.g., 50)
+    
+    Returns:
+        EMA value or None if not enough data
+    """
+    if len(prices) < period:
+        return None
+    
+    # Multiplier for weighting
+    multiplier = 2 / (period + 1)
+    
+    # Start with SMA for first EMA value
+    ema = sum(prices[:period]) / period
+    
+    # Calculate EMA for remaining prices
+    for price in prices[period:]:
+        ema = (price - ema) * multiplier + ema
+    
+    return ema
+
+
+def get_option_chain_ib(ib, ticker, strike, days_target_min, days_target_max, right='C'):
     """
     Get option chain from IB for a specific strike and DTE range.
     
+    Args:
+        right: 'C' for calls, 'P' for puts
+    
     Returns:
-        List of (expiration, dte, call_contract) tuples
+        List of (expiration, dte, option_contract) tuples
     """
     try:
         stock = Stock(ticker, 'SMART', 'USD')
@@ -156,12 +238,26 @@ def get_option_chain_ib(ib, ticker, strike, days_target_min, days_target_max):
         if not chains:
             print(f"    [WARNING] No option chains found for {ticker}")
             return []
-        
-        # Get expirations from first chain (usually the main exchange)
-        chain = chains[0]
+
+        # Prefer the standard trading class for the symbol. Some names like NVDA
+        # expose mini/adjusted classes (for example 2NVDA) first, which only have
+        # a subset of expirations and cause false skips.
+        preferred_chains = [
+            chain for chain in chains
+            if getattr(chain, 'tradingClass', '') == ticker and getattr(chain, 'multiplier', '') == '100'
+        ]
+        if preferred_chains:
+            smart_match = next((chain for chain in preferred_chains if getattr(chain, 'exchange', '') == 'SMART'), None)
+            chain = smart_match or max(preferred_chains, key=lambda item: len(item.expirations))
+        else:
+            chain = max(chains, key=lambda item: len(item.expirations))
+
         expirations = sorted(chain.expirations)
-        
-        print(f"    Found {len(expirations)} expirations")
+
+        print(
+            f"    Found {len(expirations)} expirations "
+            f"(exchange={getattr(chain, 'exchange', 'UNKNOWN')}, tradingClass={getattr(chain, 'tradingClass', 'UNKNOWN')})"
+        )
         
         today = date.today()
         matching_exps = []
@@ -171,9 +267,17 @@ def get_option_chain_ib(ib, ticker, strike, days_target_min, days_target_max):
             dte = (exp_date - today).days
             
             if days_target_min <= dte <= days_target_max:
-                # Create call option contract
-                call = Option(ticker, exp_str, strike, 'C', 'SMART')
-                matching_exps.append((exp_str, dte, call))
+                # Create option contract (call or put based on right parameter)
+                option = Option(
+                    ticker,
+                    exp_str,
+                    strike,
+                    right,
+                    'SMART',
+                    tradingClass=getattr(chain, 'tradingClass', ''),
+                    multiplier=getattr(chain, 'multiplier', ''),
+                )
+                matching_exps.append((exp_str, dte, option))
                 print(f"      Match: {exp_str} (DTE: {dte})")
         
         return matching_exps
@@ -337,39 +441,119 @@ def run_earnings_scan_ib(ib, tickers, days_ahead=30):
             # Get ATM strike
             atm_strike = get_atm_strike(price)
             
-            # Get front month options (near earnings - first expiry after earnings)
-            front_options = get_option_chain_ib(ib, ticker, atm_strike, 
+            # Get front month options for BOTH calls and puts (near earnings)
+            print(f"    Checking CALL options...")
+            front_call_options = get_option_chain_ib(ib, ticker, atm_strike, 
                                                max(1, days_until - 3), 
-                                               days_until + 7)
+                                               days_until + 7, right='C')
             
-            if not front_options:
+            print(f"    Checking PUT options...")
+            front_put_options = get_option_chain_ib(ib, ticker, atm_strike, 
+                                               max(1, days_until - 3), 
+                                               days_until + 7, right='P')
+            
+            if not front_call_options and not front_put_options:
                 print(f"  [SKIP] No front month options found")
                 continue
             
-            # Use first matching expiration for front
-            front_exp, front_dte, front_call = front_options[0]
-            
-            # Get back month options (~30 days from FRONT expiry, not from today)
-            # Calculate target DTE range: front_dte + 25 to front_dte + 35
+            # Get back month options for both calls and puts
+            front_dte = front_call_options[0][1] if front_call_options else front_put_options[0][1]
             back_dte_min = front_dte + 25
             back_dte_max = front_dte + 35
-            back_options = get_option_chain_ib(ib, ticker, atm_strike, back_dte_min, back_dte_max)
             
-            if not back_options:
-                print(f"  [SKIP] No back month options found (need {back_dte_min}-{back_dte_max} DTE)")
+            back_call_options = get_option_chain_ib(ib, ticker, atm_strike, back_dte_min, back_dte_max, right='C') if front_call_options else []
+            back_put_options = get_option_chain_ib(ib, ticker, atm_strike, back_dte_min, back_dte_max, right='P') if front_put_options else []
+            
+            # Get prices and IVs for both calls and puts
+            call_front_price, call_front_iv = None, None
+            call_back_price, call_back_iv = None, None
+            put_front_price, put_front_iv = None, None
+            put_back_price, put_back_iv = None, None
+            
+            if front_call_options and back_call_options:
+                front_exp, front_dte_call, front_call = front_call_options[0]
+                back_exp_call, back_dte_call, back_call = back_call_options[0]
+                print(f"    Getting CALL prices...")
+                call_front_price, call_front_iv = get_option_price_and_iv(ib, front_call, price)
+                call_back_price, call_back_iv = get_option_price_and_iv(ib, back_call, price)
+            
+            if front_put_options and back_put_options:
+                front_exp_put, front_dte_put, front_put = front_put_options[0]
+                back_exp_put, back_dte_put, back_put = back_put_options[0]
+                print(f"    Getting PUT prices...")
+                put_front_price, put_front_iv = get_option_price_and_iv(ib, front_put, price)
+                put_back_price, put_back_iv = get_option_price_and_iv(ib, back_put, price)
+            
+            # Determine which side (call or put) based on EMA trend (with IV as tiebreaker)
+            print(f"    Checking 50 EMA trend...")
+            trend_bias, ema_value, price_vs_ema = get_trend_bias(ib, ticker, ema_period=50)
+            
+            use_put = False
+            trend_info = ""
+            
+            if ema_value is not None:
+                trend_info = f"EMA50={ema_value}, Price {'above' if price_vs_ema > 0 else 'below'} by {abs(price_vs_ema):.1f}%"
+                print(f"    Trend: {trend_bias} bias ({trend_info})")
+                
+                # Use trend as primary filter
+                if trend_bias == 'PUT':
+                    # Bearish - use puts (if available)
+                    if put_front_iv:
+                        use_put = True
+                        print(f"    Using PUT calendar (bearish trend, below 50 EMA)")
+                    else:
+                        print(f"    Trend suggests PUT but no put IV available, using CALL")
+                else:
+                    # Bullish - use calls (if available)
+                    if call_front_iv:
+                        use_put = False
+                        print(f"    Using CALL calendar (bullish trend, above 50 EMA)")
+                    else:
+                        if put_front_iv:
+                            use_put = True
+                            print(f"    Trend suggests CALL but no call IV available, using PUT")
+            else:
+                # Fallback to IV-based selection if EMA unavailable
+                trend_info = "EMA unavailable"
+                print(f"    [WARNING] EMA unavailable, falling back to IV comparison")
+                if call_front_iv and put_front_iv:
+                    if put_front_iv > call_front_iv:
+                        use_put = True
+                        print(f"    Using PUT calendar (Put IV {put_front_iv*100:.1f}% > Call IV {call_front_iv*100:.1f}%)")
+                    else:
+                        print(f"    Using CALL calendar (Call IV {call_front_iv*100:.1f}% >= Put IV {put_front_iv*100:.1f}%)")
+                elif put_front_iv and not call_front_iv:
+                    use_put = True
+                    print(f"    Using PUT calendar (no call IV available)")
+                else:
+                    print(f"    Using CALL calendar")
+            
+            # Set the option type and prices based on which side we're using
+            option_type = "PUT" if use_put else "CALL"
+            if use_put:
+                front_exp = front_exp_put
+                front_dte = front_dte_put
+                back_exp = back_exp_put
+                back_dte = back_dte_put
+                front_price = put_front_price
+                front_iv = put_front_iv
+                back_price = put_back_price
+                back_iv = put_back_iv
+            else:
+                front_exp = front_call_options[0][0] if front_call_options else None
+                front_dte = front_call_options[0][1] if front_call_options else None
+                back_exp = back_call_options[0][0] if back_call_options else None
+                back_dte = back_call_options[0][1] if back_call_options else None
+                front_price = call_front_price
+                front_iv = call_front_iv
+                back_price = call_back_price
+                back_iv = call_back_iv
+            
+            if not front_exp or not back_exp:
+                print(f"  [SKIP] No valid option chain found")
                 continue
             
-            # Use first matching expiration for back
-            back_exp, back_dte, back_call = back_options[0]
-            
             print(f"    Front: {front_exp} ({front_dte} DTE), Back: {back_exp} ({back_dte} DTE), Gap: {back_dte - front_dte} days")
-            
-            # Get option prices and IVs (pass stock price for IV calculation fallback)
-            print(f"    Getting front month option data...")
-            front_price, front_iv = get_option_price_and_iv(ib, front_call, price)
-            
-            print(f"    Getting back month option data...")
-            back_price, back_iv = get_option_price_and_iv(ib, back_call, price)
             
             if not front_price or not back_price:
                 print(f"  [SKIP] Could not get option prices (Front: {front_price}, Back: {back_price})")
@@ -408,22 +592,35 @@ def run_earnings_scan_ib(ib, tickers, days_ahead=30):
             if not has_positive_slope:
                 # No term structure edge - can't profit from IV crush
                 recommendation = "AVOID"
+                reason = "Negative IV slope (back IV > front IV) - no crush opportunity"
                 avoid_count += 1
             elif atm_iv > 60 and days_until <= 5 and iv_slope_pct > 10:
                 # High IV, good slope (>10% premium), close to earnings
                 recommendation = "RECOMMENDED"
+                reason = "High IV, strong positive slope, close to earnings"
                 recommended_count += 1
             elif atm_iv > 50 and days_until <= 7 and iv_slope_pct > 5:
                 # Moderate IV, decent slope
                 recommendation = "CONSIDER"
+                reason = "Moderate IV with decent slope"
                 consider_count += 1
             else:
+                # Build reason for AVOID
+                reasons = []
+                if atm_iv <= 50:
+                    reasons.append(f"IV too low ({atm_iv:.1f}% < 50%)")
+                if days_until > 7:
+                    reasons.append(f"Too far from earnings ({days_until} days > 7)")
+                if iv_slope_pct <= 5:
+                    reasons.append(f"IV slope too weak (+{iv_slope_pct:.1f}% < 5%)")
                 recommendation = "AVOID"
+                reason = "; ".join(reasons) if reasons else "Does not meet criteria"
                 avoid_count += 1
             
             # Create suggested trade
             suggested_trade = {
                 'strike': float(atm_strike),
+                'option_type': option_type,  # CALL or PUT
                 'sell_expiration': datetime.strptime(front_exp, '%Y%m%d').strftime('%Y-%m-%d'),
                 'buy_expiration': datetime.strptime(back_exp, '%Y%m%d').strftime('%Y-%m-%d'),
                 'sell_dte': front_dte,
@@ -439,9 +636,14 @@ def run_earnings_scan_ib(ib, tickers, days_ahead=30):
                 'earnings_date': earnings_date,
                 'days_to_earnings': days_until,
                 'iv': round(atm_iv, 1),
+                'option_type': option_type,  # CALL or PUT
+                'trend_bias': trend_bias,  # CALL (bullish) or PUT (bearish)
+                'ema50': ema_value,
+                'price_vs_ema_pct': price_vs_ema,
                 'expected_move': round(expected_move_dollars, 2),
                 'expected_move_pct': round(expected_move_pct, 1),
                 'recommendation': recommendation,
+                'reason': reason,
                 'criteria': {
                     'avg_volume': True,  # Assume liquid stocks
                     'iv30_rv30': atm_iv > 50,
@@ -456,9 +658,10 @@ def run_earnings_scan_ib(ib, tickers, days_ahead=30):
             opportunities.append(opportunity)
             
             slope_str = f"+{iv_slope_pct:.1f}%" if iv_slope_pct > 0 else f"{iv_slope_pct:.1f}%"
+            ema_str = f"EMA50=${ema_value}, {price_vs_ema:+.1f}%" if ema_value else "EMA50=N/A"
             print(f"  [{recommendation}] Price: ${price:.2f}, Front IV: {atm_iv:.1f}%, Back IV: {back_iv_pct:.1f}%, Slope: {slope_str}")
-            print(f"    Expected Move: ±{expected_move_pct:.1f}%")
-            print(f"    Trade: Sell {suggested_trade['sell_expiration']} / Buy {suggested_trade['buy_expiration']} ${atm_strike} CALL")
+            print(f"    Expected Move: ±{expected_move_pct:.1f}% | Trend: {trend_bias} ({ema_str})")
+            print(f"    Trade: Sell {suggested_trade['sell_expiration']} / Buy {suggested_trade['buy_expiration']} ${atm_strike} {option_type}")
             print(f"    Net Credit: ${suggested_trade['net_credit']:.2f} (Sell ${suggested_trade['sell_price']:.2f} - Buy ${suggested_trade['buy_price']:.2f})")
             
         except Exception as e:
