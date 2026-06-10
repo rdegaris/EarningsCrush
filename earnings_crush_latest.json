@@ -1,117 +1,49 @@
 {
-  "timestamp": "2026-05-21T08:45:27.216800",
-  "date": "2026-05-21",
+  "timestamp": "2026-06-10T11:15:52.151170",
+  "date": "2026-06-10",
   "total_scanned": 40,
-  "earnings_found": 9,
+  "earnings_found": 1,
   "opportunities": [
     {
-      "ticker": "TTWO",
-      "price": 239.64,
-      "earnings_date": "2026-05-21",
-      "days_to_earnings": 0,
-      "iv": 187.8,
-      "option_type": "CALL",
-      "trend_bias": "CALL",
-      "ema50": 217.31,
-      "price_vs_ema_pct": 10.28,
-      "expected_move": 20.9,
-      "expected_move_pct": 8.7,
-      "recommendation": "RECOMMENDED",
-      "reason": "High IV, strong positive slope, close to earnings",
-      "criteria": {
-        "avg_volume": true,
-        "iv30_rv30": true,
-        "ts_slope_positive": true,
-        "iv_slope_pct": 231.8
-      },
-      "front_iv": 187.8,
-      "back_iv": 56.6,
-      "suggested_trade": {
-        "strike": 240.0,
-        "option_type": "CALL",
-        "sell_expiration": "2026-05-22",
-        "buy_expiration": "2026-06-18",
-        "sell_dte": 1,
-        "buy_dte": 28,
-        "sell_price": 10.45,
-        "buy_price": 15.05,
-        "net_credit": -4.6
-      }
-    },
-    {
-      "ticker": "WDAY",
-      "price": 121.05,
-      "earnings_date": "2026-05-21",
-      "days_to_earnings": 0,
-      "iv": 231.4,
+      "ticker": "ADBE",
+      "price": 234.32,
+      "earnings_date": "2026-06-11",
+      "days_to_earnings": 1,
+      "iv": 151.8,
       "option_type": "PUT",
       "trend_bias": "PUT",
-      "ema50": 127.76,
-      "price_vs_ema_pct": -5.29,
-      "expected_move": 12.2,
-      "expected_move_pct": 10.1,
+      "ema50": 249.16,
+      "price_vs_ema_pct": -5.97,
+      "expected_move": 16.75,
+      "expected_move_pct": 7.1,
       "recommendation": "RECOMMENDED",
       "reason": "High IV, strong positive slope, close to earnings",
       "criteria": {
         "avg_volume": true,
         "iv30_rv30": true,
         "ts_slope_positive": true,
-        "iv_slope_pct": 210.9
+        "iv_slope_pct": 165.0
       },
-      "front_iv": 231.4,
-      "back_iv": 74.4,
+      "front_iv": 151.8,
+      "back_iv": 57.3,
       "suggested_trade": {
-        "strike": 120.0,
+        "strike": 230.0,
         "option_type": "PUT",
-        "sell_expiration": "2026-05-22",
-        "buy_expiration": "2026-06-18",
-        "sell_dte": 1,
-        "buy_dte": 28,
-        "sell_price": 6.1,
-        "buy_price": 9.45,
-        "net_credit": -3.35
-      }
-    },
-    {
-      "ticker": "ZS",
-      "price": 169.37,
-      "earnings_date": "2026-05-26",
-      "days_to_earnings": 5,
-      "iv": 118.5,
-      "option_type": "CALL",
-      "trend_bias": "CALL",
-      "ema50": null,
-      "price_vs_ema_pct": 0,
-      "expected_move": 23.9,
-      "expected_move_pct": 14.1,
-      "recommendation": "RECOMMENDED",
-      "reason": "High IV, strong positive slope, close to earnings",
-      "criteria": {
-        "avg_volume": true,
-        "iv30_rv30": true,
-        "ts_slope_positive": true,
-        "iv_slope_pct": 196.2
-      },
-      "front_iv": 118.5,
-      "back_iv": 40.0,
-      "suggested_trade": {
-        "strike": 170.0,
-        "option_type": "CALL",
-        "sell_expiration": "2026-05-29",
-        "buy_expiration": "2026-06-26",
-        "sell_dte": 8,
-        "buy_dte": 36,
-        "sell_price": 11.95,
-        "buy_price": 16.92,
-        "net_credit": -4.97
+        "sell_expiration": "2026-06-12",
+        "buy_expiration": "2026-07-10",
+        "sell_dte": 2,
+        "buy_dte": 30,
+        "sell_price": 8.38,
+        "buy_price": 12.85,
+        "net_credit": -4.47
       }
     }
   ],
   "summary": {
-    "total_recommended": 3,
+    "total_recommended": 1,
     "total_consider": 0,
     "total_avoid": 0,
-    "avg_iv": 179.2,
-    "avg_expected_move": 11.0
+    "avg_iv": 151.8,
+    "avg_expected_move": 7.1
   }
 }
